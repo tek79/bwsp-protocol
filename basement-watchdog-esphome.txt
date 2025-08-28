@@ -1,0 +1,131 @@
+# Enable logging
+logger:
+  baud_rate: 0   # keep hardware UART free for BWSP; logs over Wi-Fi only
+
+substitutions:
+  rx_pin: GPIO16  # <- set to the ESP RX pin wired to the pump's green D+ (TX)
+
+# BWSP-A serial: 1200 8N1, RX-only (pump TX -> ESP RX). Use a 5V->3V3 divider
+uart:
+  id: bw_uart
+  rx_pin: ${rx_pin}
+  baud_rate: 1200
+  parity: NONE
+  stop_bits: 1
+  data_bits: 8
+
+# Poll UART and parse
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          static std::string line;
+          while (id(bw_uart).available()) {
+            uint8_t b;
+            id(bw_uart).read_byte(&b);
+            char ch = (char)b;
+            if (ch == '\r' || ch == '\n') {
+              if (!line.empty()) {
+                int v=-1, c=-1, st=-1;
+                if (sscanf(line.c_str(), "%d %d %d", &v, &c, &st) == 3) {
+                  float batt = (v >= 0) ? (v / 100.0f) : NAN;
+
+                  // publish only on change to cut API chatter
+                  static float last_batt = NAN;
+                  static int   last_c = 999, last_st = 999;
+
+                  if ((isnan(last_batt) && !isnan(batt)) || (!isnan(batt) && fabsf(batt - last_batt) >= 0.01f)) {
+                    id(bw_batt_voltage).publish_state(batt);
+                    last_batt = batt;
+                  }
+
+                  if (c != last_c) {
+                    id(bw_charge_status_text).publish_state(
+                      c==4 ? "Float" : c==3 ? "Trickle" : c==2 ? "Charge Off / Operating" : "Unknown");
+                    last_c = c;
+                  }
+
+                  if (st != last_st) {
+                    // status text
+                    id(bw_system_status_text).publish_state(
+                      st==0 ? "OK / Normal" :
+                      st==1 ? "Pump Activated" :
+                      st==8 ? "Check Battery" :
+                      st==9 ? "Check Battery, Pump Activated" :
+                      st==20? "Power Failure" :
+                      st==21? "Power Failure, Pump Activated" :
+                      st==48? "Check Battery" :
+                      st==49? "Check Battery, Pump Activated" :
+                      st==58? "No Battery / Disconnected" :
+                      st==59? "No Battery / Disconnected, Pump Activated" :
+                              "Unknown"
+                    );
+                    // binary sensors
+                    id(bw_system_normal).publish_state(st == 0);
+                    id(bw_check_battery_fuse).publish_state(st==8 || st==9 || st==48 || st==49 || st==58 || st==59);
+                    id(bw_pump_activated).publish_state(st==1 || st==9 || st==21 || st==49 || st==59);
+                    id(bw_power_failure).publish_state(st==20 || st==21);
+                    last_st = st;
+                  }
+
+                  // Optional debug:
+                  // id(bw_raw_line).publish_state(line.c_str());
+                }
+              }
+              line.clear();
+            } else {
+              line.push_back(ch);
+              if (line.size() > 64) line.erase(0, line.size()-64);
+            }
+          }
+
+sensor:
+  - platform: template
+    id: bw_batt_voltage
+    name: "Battery Voltage"
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: never
+    icon: mdi:car-battery
+
+text_sensor:
+  - platform: template
+    id: bw_charge_status_text
+    name: "Charge Status"
+    icon: mdi:battery-charging-medium
+    update_interval: never
+
+  - platform: template
+    id: bw_system_status_text
+    name: "System Status"
+    icon: mdi:alert-circle-check
+    update_interval: never
+
+  - platform: template
+    id: bw_raw_line
+    name: "Raw Line"
+    icon: mdi:code-braces
+    update_interval: never
+    internal: true
+
+binary_sensor:
+  - platform: template
+    id: bw_system_normal
+    name: "System Normal"
+
+  - platform: template
+    id: bw_check_battery_fuse
+    name: "Check Battery/Fuse"
+    device_class: problem
+
+  - platform: template
+    id: bw_pump_activated
+    name: "Pump Activated"
+    device_class: problem
+
+  - platform: template
+    id: bw_power_failure
+    name: "Power Failure"
+    device_class: problem
