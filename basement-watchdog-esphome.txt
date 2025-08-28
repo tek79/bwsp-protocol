@@ -41,7 +41,7 @@ interval:
 
                   if (c != last_c) {
                     id(bw_charge_status_text).publish_state(
-                      c==4 ? "Float" : c==3 ? "Trickle" : c==2 ? "Charge Off / Operating" : "Unknown");
+                      c==6 ? "Charged" : c==4 ? "Float" : c==3 ? "Trickle" : c==2 ? "Charge Off / Operating" : "Unknown");
                     last_c = c;
                   }
 
@@ -129,3 +129,4 @@ binary_sensor:
     id: bw_power_failure
     name: "Power Failure"
     device_class: problem
+
