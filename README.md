@@ -49,6 +49,8 @@ System Status:
 
 Charge Status:
 
+6= charged
+
 4= float
 
 3= trickle
