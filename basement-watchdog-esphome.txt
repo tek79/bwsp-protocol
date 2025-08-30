@@ -41,7 +41,7 @@ interval:
 
                   if (c != last_c) {
                     id(bw_charge_status_text).publish_state(
-                      c==6 ? "Charged" : c==4 ? "Float" : c==3 ? "Trickle" : c==2 ? "Charge Off / Operating" : "Unknown");
+                      c==6 ? "Charged" : c==4 ? "Float" : c==3 ? "Trickle" : c==2 ? "Operating" : "Unknown");
                     last_c = c;
                   }
 
@@ -52,6 +52,7 @@ interval:
                       st==1 ? "Pump Activated" :
                       st==8 ? "Check Battery" :
                       st==9 ? "Check Battery, Pump Activated" :
+                      st==19? "No Battery / Disconnected, Pump Activated" :
                       st==20? "Power Failure" :
                       st==21? "Power Failure, Pump Activated" :
                       st==48? "Check Battery" :
@@ -62,8 +63,8 @@ interval:
                     );
                     // binary sensors
                     id(bw_system_normal).publish_state(st == 0);
-                    id(bw_check_battery_fuse).publish_state(st==8 || st==9 || st==48 || st==49 || st==58 || st==59);
-                    id(bw_pump_activated).publish_state(st==1 || st==9 || st==21 || st==49 || st==59);
+                    id(bw_check_battery_fuse).publish_state(st==8 || st==9 || st == 19 || st==48 || st==49 || st==58 || st==59);
+                    id(bw_pump_activated).publish_state(st==1 || st==9 || st==19 || st==21 || st==49 || st==59);
                     id(bw_power_failure).publish_state(st==20 || st==21);
                     last_st = st;
                   }
@@ -129,4 +130,5 @@ binary_sensor:
     id: bw_power_failure
     name: "Power Failure"
     device_class: problem
+
 
