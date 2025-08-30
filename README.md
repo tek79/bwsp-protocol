@@ -33,6 +33,8 @@ System Status:
 
 09= battery, pump activated
 
+19= no battery/disconnected, pump activated
+
 20= power fail - automatically resets back to 00 when ac restored
 
 21= power fail, pump was activated - automatically resets back to 01 when ac restored
