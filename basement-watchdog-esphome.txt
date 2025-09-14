@@ -67,7 +67,6 @@ interval:
                       st==59? "No Battery / Disconnected, Pump Activated" :
                               ("Unknown (" + to_string(st) + ")")
                     );
-
                     // binary sensors
                     id(bw_system_normal).publish_state(st == 0);
                     id(bw_check_battery_fuse).publish_state(st==8 || st==9 || st == 19 || st==48 || st==49 || st==58 || st==59);
@@ -137,6 +136,7 @@ binary_sensor:
     id: bw_power_failure
     name: "Power Failure"
     device_class: problem
+
 
 
 
